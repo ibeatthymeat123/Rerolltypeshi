@@ -1,36 +1,79 @@
--- Cargar biblioteca de interfaz de usuario
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/UI-Library/main/source.lua"))()
-local Window = Library:CreateWindow("Anime Adventures | Rollback")
+-- Cargar Orion Library para la UI
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
--- Crear pestañas en la UI
-local RollbackTab = Window:CreateFolder("Rollback")
+-- Crear Ventana de la UI
+local Window = OrionLib:MakeWindow({Name = "Anime Adventures | Rollback", HidePremium = false, SaveConfig = true, ConfigFolder = "AA_Rollback"})
 
--- Variables de almacenamiento
+-- Pestañas en la UI
+local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local RollbackTab = Window:MakeTab({Name = "Rollback", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+-- Variables para guardar los datos antes del reroll
 local savedTraits = nil
-local selectedUnit = nil
+local savedGems = nil
 
--- Función para guardar el estado actual de los traits
-local function saveTraits()
-    if game.Players.LocalPlayer and game.Players.LocalPlayer.TraitInventory then
-        savedTraits = game.Players.LocalPlayer.TraitInventory:GetChildren()
-        print("Traits guardados correctamente.")
-    else
-        print("Error: No se pudo guardar los traits.")
-    end
-end
-
--- Función para hacer rollback de los traits
-local function rollbackTraits()
-    if savedTraits then
-        for _, trait in pairs(savedTraits) do
-            trait.Parent = game.Players.LocalPlayer.TraitInventory
+-- Función para guardar el estado actual
+local function saveState()
+    local player = game.Players.LocalPlayer
+    if player and player:FindFirstChild("TraitInventory") then
+        savedTraits = {}
+        for _, trait in pairs(player.TraitInventory:GetChildren()) do
+            table.insert(savedTraits, trait.Name)
         end
-        print("Rollback aplicado con éxito.")
+        savedGems = player:FindFirstChild("Gems") and player.Gems.Value or nil
+        OrionLib:MakeNotification({
+            Name = "Guardado",
+            Content = "Estado guardado con éxito.",
+            Time = 3
+        })
     else
-        print("Error: No hay traits guardados para restaurar.")
+        OrionLib:MakeNotification({
+            Name = "Error",
+            Content = "No se pudo guardar el estado.",
+            Time = 3
+        })
     end
 end
 
--- Botones en la UI para guardar y hacer rollback
-RollbackTab:Button("Guardar Traits", saveTraits)
-RollbackTab:Button("Hacer Rollback", rollbackTraits)
+-- Función para restaurar los traits y gemas
+local function rollbackState()
+    local player = game.Players.LocalPlayer
+    if savedTraits and player:FindFirstChild("TraitInventory") then
+        for _, traitName in pairs(savedTraits) do
+            local newTrait = Instance.new("StringValue")
+            newTrait.Name = traitName
+            newTrait.Parent = player.TraitInventory
+        end
+        if savedGems then
+            player.Gems.Value = savedGems
+        end
+        OrionLib:MakeNotification({
+            Name = "Rollback",
+            Content = "Estado restaurado con éxito.",
+            Time = 3
+        })
+    else
+        OrionLib:MakeNotification({
+            Name = "Error",
+            Content = "No hay estado guardado para restaurar.",
+            Time = 3
+        })
+    end
+end
+
+-- Botones en la UI
+MainTab:AddButton({
+    Name = "Guardar Estado",
+    Callback = function()
+        saveState()
+    end
+})
+
+RollbackTab:AddButton({
+    Name = "Hacer Rollback",
+    Callback = function()
+        rollbackState()
+    end
+})
+
+OrionLib:Init()
